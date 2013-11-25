@@ -25,6 +25,33 @@ logger.addHandler(mem)
 rate = 5.e6 # 5 MSa/s rate
 length = 499e-6 # length of gaussian in ms
 
+def gen_waveform(rate=rate, length=length):
+    '''generates a on-period waveform that has maximum value of 1.0 and
+    rescales to the unsigned int range
+    '''
+    n = np.arange(int(rate*length))
+    swave = np.sin(pi/(rate*length) * n)
+    return np.asarray(swave*(2**15-1), dtype='>i2')
+
+'''
+def gen_trap(rate=rate, length=length):
+    logger.debug('making trapezoidal window')
+    n = np.arange(int(rate*length))
+    buf = len(n)/20
+    q = (len(n) - 2*buf)/4
+
+    wave = np.zeros((len(n), ))
+    wave[buf:buf+q] = np.linspace(0, 1, num=q)
+    wave[buf+q:buf+3*q] = 1
+    wave[buf+3*q:buf+4*q] = np.linspace(1, 0, num=q)
+    
+    gaussian = np.exp(-(n - len(n)/2)**2/(len(n)/25)**2)
+    gaus = partial(np.convolve, gaussian, mode='same')
+    swave = gaus(wave)
+    # normalize window
+    swave *= 1./swave.max()
+'''
+
 class Ui_Wavegen(QtGui.QMainWindow, Ui_MainWindow):
     def __init__(self):
         super(Ui_Wavegen, self).__init__()
@@ -157,27 +184,7 @@ class Ui_Wavegen(QtGui.QMainWindow, Ui_MainWindow):
             self.instrument.write('outp 0')
 
     def generate_waveform(self):
-        logger.info('gaussian waveform will be '+ 
-                str(int(rate*length)) + ' samples in length')
-        
-        logger.debug('making trapezoidal window')
-        n = np.arange(int(rate*length))
-        buf = len(n)/20
-        q = (len(n) - 2*buf)/4
-
-        wave = np.zeros((len(n), ))
-        wave[buf:buf+q] = np.linspace(0, 1, num=q)
-        wave[buf+q:buf+3*q] = 1
-        wave[buf+3*q:buf+4*q] = np.linspace(1, 0, num=q)
-        
-        gaussian = np.exp(-(n - len(n)/2)**2/(len(n)/25)**2)
-        gaus = partial(np.convolve, gaussian, mode='same')
-        swave = gaus(wave)
-        # normalize window
-        swave *= 1./swave.max()
-        
-        self.waveform = np.asarray(swave*(2**15-1), dtype='>i2')
-        #self.verify_plot(self.waveform)
+        self.waveform = gen_waveform(rate, length)
 
     '''
     def verify_plot(self, waveform):
