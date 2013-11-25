@@ -30,7 +30,7 @@ def gen_waveform(rate=rate, length=length):
     rescales to the unsigned int range
     '''
     n = np.arange(int(rate*length))
-    swave = np.sin(pi/(rate*length) * n)
+    swave = np.sin(np.pi/(rate*length) * n)
     return np.asarray(swave*(2**15-1), dtype='>i2')
 
 '''
