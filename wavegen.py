@@ -22,16 +22,59 @@ logger.setLevel(logging.DEBUG)
 mem = logging.handlers.MemoryHandler(1)
 logger.addHandler(mem)
 
+
 rate = 5.e6 # 5 MSa/s rate
 length = 499e-6 # length of gaussian in ms
 
+'''
 def gen_waveform(rate=rate, length=length):
-    '''generates a on-period waveform that has maximum value of 1.0 and
-    rescales to the unsigned int range
-    '''
     n = np.arange(int(rate*length))
     swave = np.sin(np.pi/(rate*length) * n)
     return np.asarray(swave*(2**15-1), dtype='>i2')
+'''
+
+def gen_waveform():
+    smoothing = 10/5.  # smooth out the ends at the expense of larger derivative
+    trigger_rate = 1000 # Hz
+    segment_period = 1/trigger_rate - 1e-6 # A bit less than 1 ms (Trigger rate 1 kHz)
+    sample_rate = 10.e6 # in Hz
+
+    n_samples = segment_period*sample_rate
+    x = np.linspace(-7.5, 32.5, int(4*n_samples))# ms
+    gd1 = lambda x: 2/pi*arctan2(exp(smoothing*x),1)
+    gd2 = lambda x: 1 - 2/pi*arctan2(exp(smoothing*x),1)
+    sq = lambda x, width: 0.5 * (numpy.sign(x) - numpy.sign(x - width))
+
+    fn = lambda x: gd1(x)*sq(x + 5, 10) + gd2(x - 10)*sq(x - 5, 10) + gd1(x - 20)*sq(x - 15, 10) + gd2(x - 30)*sq(x - 25, 10) 
+
+    '''
+    t = trigger_rate*x/sample_rate*2 * 1000 # ms
+    plot(t, fn(x))
+    plot(t[:-2], np.diff(fn(x)[:-1])*1000)
+    vlines([x + 1.5  for x in range(-1, 5, 2)], -0.5, 1, color='g', linewidth=3)
+    vlines([x + 0.5  for x in range(-1, 5, 1)], -0.5, 1.2, color='r')
+    grid()
+    xlabel('time/ms')
+    ylabel('amplitude/fullscale')
+    print(n_samples)
+
+    n = arange(2*n_samples)
+    plot(n[:n_samples//2], fn(x)[:n_samples//2], linewidth=3)
+    plot(n[n_samples//2:n_samples], fn(x)[n_samples//2:n_samples], linewidth=3)
+    plot(n[n_samples:n_samples + n_samples//2], fn(x)[n_samples:n_samples + n_samples//2], linewidth=3)
+    plot(n[n_samples + n_samples//2:2*n_samples], fn(x)[n_samples + n_samples//2:2*n_samples], linewidth=3)
+    grid()
+    '''
+    
+    max_uint = 2<<15 - 1
+
+    # return parts of the sequence
+    return (np.asarray(fn(x)[:n_samples//2]*max_uint, dtype='>i2'),
+            np.asarray(fn(x)[n_samples//2:n_samples]*max_uint, dtype='>i2'),
+            np.asarray(fn(x)[n_samples:n_samples + n_samples//2]*max_uint,
+                dtype='>i2'),
+            np.asarray(fn(x)[n_samples + n_samples//2:2*n_samples]*max_uint,
+                dtype='>i2'))
 
 '''
 def gen_trap(rate=rate, length=length):
@@ -96,54 +139,61 @@ class Ui_Wavegen(QtGui.QMainWindow, Ui_MainWindow):
         logger.info('response: ' + self.instrument.ask('syst:err?'))
         
     def on_send_waveform_clicked(self):
-        if(getattr(self, 'waveform', None) is not None):
-            logger.info('reusing precalculated waveform')
-        else:
             logger.info('creating waveform')
             self.generate_waveform()
         
         try:
             inst = self.instrument
-            logger.debug('sending smoothtrap waveform')
+            logger.debug('sending 4 phase waveform')
 
             nbytes = 2*len(self.waveform)
             ndigits = len(str(nbytes))
             
-            logger.debug('data:arb:dac smoothtrap, #{n:d}{nbytes:d}'.format(
+            logger.debug('data:arb:dac part1, #{n:d}{nbytes:d}'.format(
                 n=ndigits, nbytes=nbytes))
 
-            inst.write('data:arb:dac smoothtrap, #{n:d}{nbytes:d}{data:s}'.format(
-                n=ndigits, nbytes=nbytes, data=self.waveform.tostring()))
+            inst.write('data:arb:dac part1, #{n:d}{nbytes:d}{data:s}'.format(
+                n=ndigits, nbytes=nbytes, data=self.waveform[0].tostring()))
             logger.debug('response: ' + inst.ask('syst:err?'))
 
-            logger.debug('sending dc waveform')
-
-            dc = np.zeros(int(len(self.waveform)/4), dtype='>i2')
-            nbytes = 2*len(dc)
-            ndigits = len(str(nbytes))
-
-            logger.debug('data:arb:dac dc, #{n:d}{nbytes:d}'.format(
+            logger.debug('data:arb:dac part2, #{n:d}{nbytes:d}'.format(
                 n=ndigits, nbytes=nbytes))
 
-            inst.write('data:arb:dac dc, #{n:d}{nbytes:d}{data:s}'.format(
-                n=ndigits, nbytes=nbytes, data=dc.tostring()))
+            inst.write('data:arb:dac part2, #{n:d}{nbytes:d}{data:s}'.format(
+                n=ndigits, nbytes=nbytes, data=self.waveform[1].tostring()))
             logger.debug('response: ' + inst.ask('syst:err?'))
-            
+
+            logger.debug('data:arb:dac part2, #{n:d}{nbytes:d}'.format(
+                n=ndigits, nbytes=nbytes))
+
+            inst.write('data:arb:dac part3, #{n:d}{nbytes:d}{data:s}'.format(
+                n=ndigits, nbytes=nbytes, data=self.waveform[2].tostring()))
+            logger.debug('response: ' + inst.ask('syst:err?'))
+
+            logger.debug('data:arb:dac part4, #{n:d}{nbytes:d}'.format(
+                n=ndigits, nbytes=nbytes))
+
+            inst.write('data:arb:dac part4, #{n:d}{nbytes:d}{data:s}'.format(
+                n=ndigits, nbytes=nbytes, data=self.waveform[3].tostring()))
+            logger.debug('response: ' + inst.ask('syst:err?'))
+
             logger.info('available waveforms: (data:vol:cat?)')
             logger.info('>   ' + inst.ask('data:vol:cat?'))
 
             logger.debug('constructing sequence stark')
 
             binblock = \
-                'stark,smoothtrap,1,onceWaitTrig,lowAtStart,4,' + \
-                'dc,10,onceWaitTrig,highAtStart,4'
+                'stark,part1,1,onceWaitTrig,lowAtStart,4,' + \
+                'stark,part2,1,onceWaitTrig,lowAtStart,4,' + \
+                'stark,part3,1,onceWaitTrig,lowAtStart,4,' + \
+                'stark,part4,1,onceWaitTrig,lowAtStart,4,' + \
 
             nbytes = len(binblock)
             ndigits = len(str(nbytes))
 
             inst.write('data:seq #{n:d}{nbytes:d}{binblock:s}'.format(
                 n=ndigits, nbytes=nbytes, binblock=binblock))
-            logger.info('should be ' + str(len(dc) + len(self.waveform)) + 
+            logger.info('should be ' + str(np.prod(self.waveform)) + 
                 ' points in sequence')
             logger.info('got ' + inst.ask('data:attr:poin? stark')) 
 
@@ -160,7 +210,7 @@ class Ui_Wavegen(QtGui.QMainWindow, Ui_MainWindow):
             inst.write('volt:high 1')
             inst.write('volt:low 0')
             inst.write('trig:sour ext')
-            inst.write('trig:del 0.770e-6')
+            inst.write('trig:del 0.440e-6')
 
             logger.debug('volts ptp: ' + inst.ask('func:arb:ptp?'))
 
@@ -184,7 +234,7 @@ class Ui_Wavegen(QtGui.QMainWindow, Ui_MainWindow):
             self.instrument.write('outp 0')
 
     def generate_waveform(self):
-        self.waveform = gen_waveform(rate, length)
+        self.waveform = gen_waveform()
 
     '''
     def verify_plot(self, waveform):

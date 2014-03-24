@@ -1,0 +1,3 @@
+[submodule "extern/pyvisa"]
+	path = extern/pyvisa
+	url = https://github.com/hgrecco/pyvisa.git
