@@ -133,15 +133,12 @@ class Ui_Wavegen(QtGui.QMainWindow, Ui_MainWindow):
         logger.info('response: ' + self.instrument.ask('syst:err?'))
 
     def on_send_waveform_clicked(self):
-        if(getattr(self, 'waveform', None) is not None):
-            logger.info('reusing precalculated waveform')
-        else:
             logger.info('creating waveform')
             self.generate_waveform()
 
         try:
             inst = self.instrument
-            logger.debug('sending smoothtrap waveform')
+            logger.debug('sending 4 phase waveform')
 
             for i,w in enumerate(self.waveform):
                 nbytes = 2*len(w)
@@ -188,7 +185,7 @@ class Ui_Wavegen(QtGui.QMainWindow, Ui_MainWindow):
             inst.write('volt:high 1')
             inst.write('volt:low 0')
             inst.write('trig:sour ext')
-            inst.write('trig:del 0.770e-6')
+            inst.write('trig:del 0.440e-6')
 
             logger.debug('volts ptp: ' + inst.ask('func:arb:ptp?'))
 

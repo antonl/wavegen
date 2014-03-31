@@ -1,0 +1,6 @@
+[submodule "extern/pyvisa"]
+	path = extern/pyvisa
+	url = https://github.com/hgrecco/pyvisa.git
+[submodule "extern/statemachine"]
+	path = extern/statemachine
+	url = https://github.com/kyleconroy/statemachine.git
