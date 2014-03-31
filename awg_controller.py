@@ -15,6 +15,9 @@ except ImportError as e:
 except OSError:
     log.error('could not find visa library; is a visa implementation installed?')
 
+def generate_waveform():
+    pass
+
 class Agilent332xx(object):
     def __init__(self, name, **kwargs):
         self.me = _rm.get_instrument(name, **kwargs)
@@ -25,14 +28,17 @@ class Agilent332xx(object):
             log.error(e)
             raise e
 
-    def write(self, *args, **kwargs):
-        self.me.write(*args, **kwargs)
+    def write(self, msg):
+        self.me.write(msg)
+        log.info('<< %s', msg)
 
-    def ask(self, *args, **kwargs):
-        return self.me.ask(*args, **kwargs)
+    def ask(self, msg):
+        log.info('<< %s', msg)
+        resp = self.me.ask(msg)
+        log.info('>> %s', resp)
         
-    def send_load_waveform_macro(self):
-        waveform = generate_waveform()
+    def send_waveform_macro(self):
+        self.waveform = generate_waveform()
 
     def set_delay(self, delay):
         val = float(delay)*1e-6
@@ -64,7 +70,7 @@ class Agilent332xx(object):
         self.write('volt:high 1')
         self.write('volt:low 0')
         self.write('trig:sour ext')
-        self.write('trig:del 0.440e-6')
+        self.write('trig:del 0.0')
 
     def enable(self):
         self.write('outp 1')
@@ -72,6 +78,11 @@ class Agilent332xx(object):
     def disable(self):
         self.write('outp 0')
 
+    def get_error(self):
+        return self.ask('syst:err?')
+
+    error = property(get_error)
+    del get_error
 
 class WavegenController(fsm.Machine):
     initial_state = 'preinit'
@@ -147,7 +158,11 @@ class WavegenController(fsm.Machine):
 
     @fsm.event
     def enable(self):
-        success = self.instrument.enable()
+        try:
+            self.instrument.enable()
+            success = True
+        except:
+            success = False
 
         if success:
             yield ['wait2', 'running'], 'running'
@@ -156,7 +171,9 @@ class WavegenController(fsm.Machine):
 
     @fsm.event
     def disable(self):
-        success = self.instrument.disable()
+        self.instrument.disable()
+        success = True
+
         if success:
             yield 'running', 'wait2'
         else:
