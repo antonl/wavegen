@@ -6,7 +6,8 @@ import sys
 from PySide import QtGui
 
 log = logging.getLogger('wavegen')
-log.addHandler(logging.NullHandler())
+log.addHandler(logging.StreamHandler())
+log.setLevel(logging.DEBUG)
 
 def generate_waveform(phase=4, plot=False):
     smoothing = 10./5.  # smooth out the ends at the expense of larger derivative
@@ -46,8 +47,9 @@ def generate_waveform(phase=4, plot=False):
         
     max_int = 2<<15 - 1 # signed integers
 
-    return (np.array(fnx[:n_samples]*max_int, dtype='>i2'), 
-            np.array(fnx[n_samples:]*max_int, dtype='>i2'))
+    return ((np.array(fnx[:n_samples]*max_int, dtype='>i2'), 
+            np.array(fnx[n_samples:]*max_int, dtype='>i2')), 
+            sample_rate)
 
 try:
     import visa
@@ -81,7 +83,7 @@ class Agilent332xx(object):
         
     def send_waveform_macro(self):
         log.info('generating waveform')
-        self.waveform = generate_waveform()
+        self.waveform, sample_rate = generate_waveform()
 
         log.info('clearing volatile memory')
         self.write('data:vol:cle')
@@ -119,6 +121,8 @@ class Agilent332xx(object):
             ' points in sequence')
         log.info('got ' + self.ask('data:attr:poin? stark')) 
 
+        log.info('asking free points: ' + self.ask('data:vol:free?'))
+
         log.info('selecting sequence')
         self.write('func:arb stark')
         self.write('func arb')
@@ -134,7 +138,7 @@ class Agilent332xx(object):
         self.write('trig:sour ext')
         self.write('trig:del 0.0')
 
-        self.write('func:arb:srate {rate:2.3f}'.format(rate=5e6))
+        self.write('func:arb:srate {rate:2.3f}'.format(rate=sample_rate))
         self.write('func:arb:filt norm')
         self.check_error()
 
@@ -213,7 +217,7 @@ class WavegenController(fsm.Machine):
 
     @fsm.after_transition('preinit', 'wait1')
     def invert_control(self):
-        sys.exit(self.app.exec_())
+        self.app.exec_()
 
     def connect_events(self):
         g = self.gui
@@ -222,6 +226,8 @@ class WavegenController(fsm.Machine):
         g.delay_box.valueChanged.connect(self.set_delay)
         g.voltage_box.valueChanged.connect(self.set_output_voltage)
         g.enable_box.stateChanged.connect(self.handle_enable)
+
+        g.close_callback = self.close
     
     def handle_enable(self):
         if self.gui.enable_box.isChecked():
@@ -308,6 +314,18 @@ class WavegenController(fsm.Machine):
     def log_reason(self):
         log.error(self.reason)
 
+    @fsm.event
+    def close(self):
+        log.info('closing')
+
+        if self.state not in ['preinit']:
+            del self.ResourceManager
+
+            if self.state not in ['wait1']:
+                del self.instrument
+
+        yield '*', 'terminated'
+
 class HtmlFormatter(logging.Formatter):
     def __init__(self, *args, **kwargs):
         logging.Formatter.__init__(self, *args, **kwargs)
@@ -340,11 +358,12 @@ class GuiLoggingHandler(logging.Handler):
     def emit(self, record):
         formatted = logging.Handler.format(self, record)
         print(formatted)
-        self.append(formatted)
+        self.target.append(formatted)
 
 class WavegenGui(QtGui.QMainWindow):
     def __init__(self, *args, **kwargs):
         QtGui.QMainWindow.__init__(self, *args, **kwargs)
+        self.close_callback = None
         self.make_main_frame()
     
     def make_main_frame(self):
@@ -376,6 +395,12 @@ class WavegenGui(QtGui.QMainWindow):
         hgroup.setLayout(form)
         self.main_frame.setLayout(hlayout)
         self.setCentralWidget(self.main_frame)
+
+    def closeEvent(self, ev):
+        if self.close_callback:
+            self.close_callback()
+        
+        super(QtGui.QMainWindow, self).closeEvent(ev)
 
 if __name__ == '__main__':
     ctrl = WavegenController()
