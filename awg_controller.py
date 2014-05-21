@@ -10,7 +10,7 @@ log.addHandler(logging.StreamHandler())
 log.setLevel(logging.DEBUG)
 
 def generate_waveform(phase=4, plot=False):
-    smoothing = 10./5.  # smooth out the ends at the expense of larger derivative
+    smoothing = 6/5.  # smooth out the ends at the expense of larger derivative
     trigger_rate = 500 # Hz
     segment_period = 1./trigger_rate - 1e-6 # A bit less than expected period
     sample_rate = 5e6 # 10 MHz
@@ -385,6 +385,11 @@ class WavegenGui(QtGui.QMainWindow):
         self.delay_box = QtGui.QDoubleSpinBox()
         self.voltage_box = QtGui.QDoubleSpinBox()
         self.enable_box = QtGui.QCheckBox("Enabled")
+
+	self.voltage_box.setRange(0.01, 10.0)
+	self.voltage_box.setSingleStep(0.1)
+	self.delay_box.setRange(0.0, 2000.)
+	self.delay_box.setSingleStep(100)
 
         form.addRow("1. Choose device", self.device_chooser)
         form.addRow("2. Send waveform", self.load_waveform_btn)
