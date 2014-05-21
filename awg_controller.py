@@ -4,7 +4,7 @@ import logging
 import numpy as np
 import sys
 from PySide import QtGui
-from . import waveforms
+from waveforms import generate_waveform
 
 log = logging.getLogger('wavegen')
 log.addHandler(logging.StreamHandler())
@@ -43,6 +43,7 @@ class Agilent332xx(object):
     def send_waveform_macro(self):
         log.info('generating waveform')
         self.waveform, sample_rate = generate_waveform('sigmoidal 500Hz 6 off 6 on')
+	
 
         log.info('clearing volatile memory')
         self.write('data:vol:cle')
@@ -347,7 +348,7 @@ class WavegenGui(QtGui.QMainWindow):
 
 	self.voltage_box.setRange(0.01, 10.0)
 	self.voltage_box.setSingleStep(0.1)
-	self.delay_box.setRange(0.0, 2000.)
+	self.delay_box.setRange(0.0, 20000.)
 	self.delay_box.setSingleStep(100)
 
         form.addRow("1. Choose device", self.device_chooser)

@@ -36,7 +36,7 @@ def sigmoidal_500Hz_1off_1on(phase=4, plot=False):
         ax2.grid()
         #fig.show()
         
-    max_int = 1<<15 - 1 # signed integers
+    max_int = (1<<16) - 1 # signed integers
 
     return ((np.array(fnx[:n_samples]*max_int, dtype='>i2'), 
             np.array(fnx[n_samples:]*max_int, dtype='>i2')), 
@@ -58,12 +58,11 @@ def sigmoidal_6phase_6off_6on(plot=False):
     waveform[n_samples:n_samples+sin[n_samples//12:].shape[0]] = sin[n_samples//12:]
     waveform[n_samples+n_samples//12:] = 0
 
-    max_int = 1<<15 - 1 # signed integers
+    max_int = (1<<15) - 1# signed integers
 
-    return np.array(waveform[:n_samples]*max_int, dtype='>i2'), \
-            np.array(waveform[n_samples:]*max_int, dtype='>i2'), \
-            sample_rate
-
+    return ((np.array(waveform[:n_samples]*max_int, dtype='>i2'), 
+            np.array(waveform[n_samples:]*max_int, dtype='>i2')), 
+            sample_rate)
 
 waveforms = {
     'sigmoidal 500Hz 1 off 1 on': sigmoidal_500Hz_1off_1on,
@@ -75,4 +74,3 @@ def generate_waveform(waveform):
         raise ValueError('incorrect waveform chosen')
 
     return waveforms[waveform]()
-
