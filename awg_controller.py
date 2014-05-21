@@ -1,55 +1,15 @@
-from __future__ import division, print_function
+from __future__ import division, print_function, absolute_import
 import statemachine as fsm
 import logging
 import numpy as np
 import sys
 from PySide import QtGui
+from . import waveforms
 
 log = logging.getLogger('wavegen')
 log.addHandler(logging.StreamHandler())
 log.setLevel(logging.DEBUG)
 
-def generate_waveform(phase=4, plot=False):
-    smoothing = 10./5.  # smooth out the ends at the expense of larger derivative
-    trigger_rate = 500 # Hz
-    segment_period = 1./trigger_rate - 1e-6 # A bit less than expected period
-    sample_rate = 5e6 # 10 MHz
-
-    n_samples = int(segment_period*sample_rate)
-
-    log.debug('using %s samples per segment', n_samples)
-    x = np.linspace(0, 20, int(2*n_samples))# ms
-    gd1 = lambda x: 2/np.pi*np.arctan2(np.exp(smoothing*x),1)
-    gd2 = lambda x: 1 - 2/np.pi*np.arctan2(np.exp(smoothing*x),1)
-    sq = lambda x, width: 0.5 * (np.sign(x) - np.sign(x - width))
-
-    fn = lambda x: gd1(x - phase)*sq(x + 5 - phase, 10) + gd2(x - 10 - phase)*sq(x - 5 - phase, 10)
-    fnx = fn(x)
-
-    if plot:
-        import matplotlib.pyplot as plt
-
-        fig, (ax1, ax2) = plt.subplots(2, 1)
-        t = trigger_rate*x/sample_rate * 2*500 # ms
-        ax1.plot(t, fnx)
-        ax1.plot(t[:-2], np.diff(fnx[:-1])*1000)
-        ax1.grid()
-        ax1.set_xlabel('time/ms')
-        ax1.set_ylabel('amplitude/fullscale')
-        ax1.set_ylim(-0.5, 1.1)
-
-        n = np.arange(2*n_samples)
-        ax2.plot(n[:n_samples], fnx[:n_samples], linewidth=3)
-        ax2.plot(n[n_samples:2*n_samples], fnx[n_samples:2*n_samples], linewidth=3)
-        ax2.set_ylim(-0.1, 1.1)
-        ax2.grid()
-        #fig.show()
-        
-    max_int = 2<<15 - 1 # signed integers
-
-    return ((np.array(fnx[:n_samples]*max_int, dtype='>i2'), 
-            np.array(fnx[n_samples:]*max_int, dtype='>i2')), 
-            sample_rate)
 
 try:
     import visa
@@ -83,7 +43,7 @@ class Agilent332xx(object):
         
     def send_waveform_macro(self):
         log.info('generating waveform')
-        self.waveform, sample_rate = generate_waveform()
+        self.waveform, sample_rate = generate_waveform('sigmoidal 500Hz 6 off 6 on')
 
         log.info('clearing volatile memory')
         self.write('data:vol:cle')
