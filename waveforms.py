@@ -42,8 +42,7 @@ def sigmoidal_500Hz_1off_1on(phase=4, plot=False):
             np.array(fnx[n_samples:]*max_int, dtype='>i2')), 
             sample_rate)
 
-def sigmoidal_6phase_6off_6on(plot=false):
-    smoothing = 10./5.  # smooth out the ends at the expense of larger derivative
+def sigmoidal_6phase_6off_6on(plot=False):
     segment_period = 12e-3 - 1e-6 # s, a bit less than expected period
     sample_rate = 5e6 # 5 mhz
 
@@ -88,7 +87,7 @@ def sigmoidal_4phase_4off_4on(plot=False):
 waveforms = {
     'sigmoidal 500Hz 1 off 1 on': sigmoidal_500Hz_1off_1on,
     'sigmoidal 500Hz 6 off 6 on': sigmoidal_6phase_6off_6on,
-    'sigmoidal 500Hz 4 off 4 on': sigmoidal_4phase_4on_4off,
+    'sigmoidal 500Hz 4 off 4 on': sigmoidal_4phase_4off_4on,
     }
 
 def generate_waveform(waveform):

@@ -180,8 +180,8 @@ class WavegenController(fsm.Machine):
         self.app.exec_()
 
     def choose_waveform(self, id):
-        waveform_names = waveforms.keys()
-        self.waveform = self.gui.waveform_box[waveform_names[id]]
+	log.debug('current waveform text \'' + self.gui.waveform_box.currentText())
+        self.waveform = self.gui.waveform_box.currentText()
 
     def connect_events(self):
         g = self.gui
@@ -346,7 +346,7 @@ class WavegenGui(QtGui.QMainWindow):
         form = QtGui.QFormLayout()
         
         self.device_chooser = QtGui.QComboBox()
-        self.waveform_box = Qt.QComboBox()
+        self.waveform_box = QtGui.QComboBox()
         self.load_waveform_btn = QtGui.QPushButton("Send!")
         self.delay_box = QtGui.QDoubleSpinBox()
         self.voltage_box = QtGui.QDoubleSpinBox()
