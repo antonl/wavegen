@@ -4,7 +4,7 @@ import logging
 import numpy as np
 import sys
 from PySide import QtGui
-from waveforms import generate_waveform
+from waveforms import generate_waveform, waveforms
 
 log = logging.getLogger('wavegen')
 log.addHandler(logging.StreamHandler())
@@ -40,11 +40,10 @@ class Agilent332xx(object):
         log.log(logging.DEBUG-1, '>> %s', resp)
         return resp
         
-    def send_waveform_macro(self):
+    def send_waveform_macro(self, waveform):
         log.info('generating waveform')
-        self.waveform, sample_rate = generate_waveform('sigmoidal 500Hz 6 off 6 on')
+        self.waveform, sample_rate = generate_waveform(waveform)
 	
-
         log.info('clearing volatile memory')
         self.write('data:vol:cle')
 
@@ -157,6 +156,7 @@ class WavegenController(fsm.Machine):
         #log.addHandler(self.log_handler)
         # Set instruments
         self.gui.device_chooser.addItems(self.instruments)
+        self.gui.waveform_box.addItems(waveforms.keys())
         # Connect events
         self.connect_events()
         
@@ -179,9 +179,14 @@ class WavegenController(fsm.Machine):
     def invert_control(self):
         self.app.exec_()
 
+    def choose_waveform(self, id):
+        waveform_names = waveforms.keys()
+        self.waveform = self.gui.waveform_box[waveform_names[id]]
+
     def connect_events(self):
         g = self.gui
         g.device_chooser.currentIndexChanged.connect(self.set_device)
+        g.waveform_box.currentIndexChanged.connect(self.choose_waveform)
         g.load_waveform_btn.clicked.connect(self.load_waveform)
         g.delay_box.valueChanged.connect(self.set_delay)
         g.voltage_box.valueChanged.connect(self.set_output_voltage)
@@ -216,7 +221,7 @@ class WavegenController(fsm.Machine):
     @fsm.event
     def load_waveform(self):
         try:
-            self.instrument.send_waveform_macro()
+            self.instrument.send_waveform_macro(self.waveform)
             success = True
         except Exception as e:
             self.reason = 'failed sending a waveform, message:' + e.message
@@ -341,21 +346,23 @@ class WavegenGui(QtGui.QMainWindow):
         form = QtGui.QFormLayout()
         
         self.device_chooser = QtGui.QComboBox()
+        self.waveform_box = Qt.QComboBox()
         self.load_waveform_btn = QtGui.QPushButton("Send!")
         self.delay_box = QtGui.QDoubleSpinBox()
         self.voltage_box = QtGui.QDoubleSpinBox()
         self.enable_box = QtGui.QCheckBox("Enabled")
 
-	self.voltage_box.setRange(0.01, 10.0)
-	self.voltage_box.setSingleStep(0.1)
-	self.delay_box.setRange(0.0, 20000.)
-	self.delay_box.setSingleStep(100)
+        self.voltage_box.setRange(0.01, 10.0)
+        self.voltage_box.setSingleStep(0.1)
+        self.delay_box.setRange(0.0, 20000.)
+        self.delay_box.setSingleStep(100)
 
         form.addRow("1. Choose device", self.device_chooser)
-        form.addRow("2. Send waveform", self.load_waveform_btn)
-        form.addRow("3. Set delay (us)", self.delay_box)
-        form.addRow("4. Set output volage", self.voltage_box)
-        form.addRow("5. Enable output", self.enable_box)
+        form.addRow("2. Choose waveform", self.waveform_box)
+        form.addRow("3. Send waveform", self.load_waveform_btn)
+        form.addRow("4. Set delay (us)", self.delay_box)
+        form.addRow("5. Set output volage", self.voltage_box)
+        form.addRow("6. Enable output", self.enable_box)
         
         hgroup.setLayout(form)
         self.main_frame.setLayout(hlayout)
