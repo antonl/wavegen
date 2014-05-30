@@ -1,5 +1,8 @@
 from __future__ import division, absolute_import, print_function
 import numpy as np
+import logging
+
+log = logging.getLogger('wavegen.waveform')
 
 def sigmoidal_500Hz_1off_1on(phase=4, plot=False):
     smoothing = 10./5.  # smooth out the ends at the expense of larger derivative
@@ -64,18 +67,18 @@ def sigmoidal_6phase_6off_6on(plot=False):
             sample_rate)
         
 def sigmoidal_4phase_4off_4on(plot=False):
+    # total length
     segment_period = 8e-3 - 1e-5 # s, a bit less than expected period
     sample_rate = 5e6 # 5 MHz
 
     n_samples = int(segment_period*sample_rate)
 
-    x = np.linspace(0, 2, int(2*n_samples))
-    
-    sin = 0.5*np.sin(2*np.pi*4*x[:n_samples//4] - (2*np.pi*0.25)) + 0.5 # halfwave of sin
+    x = np.linspace(0, 2, 2*n_samples)
+    cos = 0.5*np.cos(2*np.pi*4*x[:n_samples//4] + np.pi) + 0.5 # halfwave of sin
     
     waveform = np.ones_like(x)
-    waveform[:n_samples//8] = sin[:n_samples//8]
-    waveform[n_samples:n_samples+sin[n_samples//8:].shape[0]] = sin[n_samples//8:]
+    waveform[:n_samples//8] = cos[:n_samples//8]
+    waveform[n_samples:n_samples+cos[n_samples//8:].shape[0]] = cos[n_samples//8:]
     waveform[n_samples+n_samples//8:] = 0
 
     max_int = (1<<15) - 1# signed integers
@@ -94,4 +97,5 @@ def generate_waveform(waveform):
     if not waveform in waveforms.keys():
         raise ValueError('incorrect waveform chosen')
 
+    log.info('generating waveform "{:s}"'.format(waveform))
     return waveforms[waveform]()
