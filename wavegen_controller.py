@@ -180,7 +180,8 @@ class WavegenController(fsm.Machine):
         self.app.exec_()
 
     def choose_waveform(self, id):
-	log.debug('current waveform text \'' + self.gui.waveform_box.currentText())
+        log.debug('current waveform text "' +\
+                self.gui.waveform_box.currentText() + '"')
         self.waveform = self.gui.waveform_box.currentText()
 
     def connect_events(self):

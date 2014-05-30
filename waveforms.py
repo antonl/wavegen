@@ -43,8 +43,8 @@ def sigmoidal_500Hz_1off_1on(phase=4, plot=False):
             sample_rate)
 
 def sigmoidal_6phase_6off_6on(plot=False):
-    segment_period = 12e-3 - 1e-6 # s, a bit less than expected period
-    sample_rate = 5e6 # 5 mhz
+    segment_period = 12e-3 - 1e-5 # s, a bit less than expected period
+    sample_rate = 5e6 # 5 MHz
 
     n_samples = int(segment_period*sample_rate)
 
@@ -64,7 +64,7 @@ def sigmoidal_6phase_6off_6on(plot=False):
             sample_rate)
         
 def sigmoidal_4phase_4off_4on(plot=False):
-    segment_period = 8e-3 - 1e-6 # s, a bit less than expected period
+    segment_period = 8e-3 - 1e-5 # s, a bit less than expected period
     sample_rate = 5e6 # 5 MHz
 
     n_samples = int(segment_period*sample_rate)
