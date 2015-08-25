@@ -68,7 +68,7 @@ def sigmoidal_6phase_6off_6on(plot=False):
         
 def sigmoidal_4phase_4off_4on(plot=False):
     # total length
-    segment_period = 8e-3 - 1e-5 # s, a bit less than expected period
+    segment_period = 8e-3 - 1e-6 # s, a bit less than expected period
     sample_rate = 5e6 # 5 MHz
 
     n_samples = int(segment_period*sample_rate)
@@ -87,10 +87,31 @@ def sigmoidal_4phase_4off_4on(plot=False):
             np.array(waveform[n_samples:]*max_int, dtype='>i2')), 
             sample_rate)
 
+def sigmoidal_7phase_7off_7on(plot=False):
+    # total length
+    segment_period = 14e-3 - 1e-6 # s, a bit less than expected period
+    sample_rate = 5e6 # 5 MHz
+
+    n_samples = int(segment_period*sample_rate)
+
+    x = np.linspace(0, 2, 2*n_samples)
+    cos = 0.5*np.cos(2*np.pi*7*x[:n_samples//7] + np.pi) + 0.5 # halfwave of sin
+    
+    waveform = np.ones_like(x)
+    waveform[:n_samples//14] = cos[:n_samples//14]
+    waveform[n_samples:n_samples+cos[n_samples//14:].shape[0]] = cos[n_samples//14:]
+    waveform[n_samples+n_samples//14:] = 0
+
+    max_int = (1<<15) - 1# signed integers
+
+    return ((np.array(waveform[:n_samples]*max_int, dtype='>i2'), 
+            np.array(waveform[n_samples:]*max_int, dtype='>i2')), 
+            sample_rate)
 waveforms = {
     'sigmoidal 500Hz 1 off 1 on': sigmoidal_500Hz_1off_1on,
     'sigmoidal 500Hz 6 off 6 on': sigmoidal_6phase_6off_6on,
     'sigmoidal 500Hz 4 off 4 on': sigmoidal_4phase_4off_4on,
+    'sigmoidal 500Hz 7 off 7 on': sigmoidal_7phase_7off_7on,
     }
 
 def generate_waveform(waveform):
